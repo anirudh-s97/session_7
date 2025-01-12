@@ -6,9 +6,27 @@ from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
-from src.model import MNISTClassifier, count_parameters  # Import your model
+import sys
+import albumentations as A
 
-def train_model(model, train_loader, test_loader, criterion, optimizer, epochs=20, device='cuda'):
+model_id = sys.argv[1]
+
+
+if model_id == "model_1":
+    from model_1 import MNISTClassifier, count_parameters
+
+elif model_id == "model_2":
+    from model_2 import MNISTClassifier, count_parameters  # Import your model
+
+elif model_id == "model_3":
+    from cutout import Cutout
+    from model_3 import MNISTClassifier, count_parameters  # Import your model
+
+else:
+    raise("Invalid Model id to train")
+
+
+def train_model(model, train_loader, test_loader, criterion, optimizer, epochs=15, device='cuda'):
     # Initialize lists to store metrics
     train_losses = []
     test_losses = []
@@ -117,26 +135,78 @@ def main():
     # Check if CUDA is available
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f'Using device: {device}')
-    
-    # Define transforms
-    train_transform = transforms.Compose([
-        transforms.RandomRotation((-7.0, 7.0), fill=(1,)),
-        transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
-    ])
 
-    test_transform = transforms.Compose([
+    if model_id == "model_1":
+        train_transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
-    ])
+        transforms.Normalize((0.1307,), (0.3081,))])
+        
+        test_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.1307,), (0.3081,))])
+
     
+    elif model_id == "model_2":
+    
+        # Define transforms
+        train_transform = transforms.Compose([
+            transforms.RandomRotation((-7.0, 7.0), fill=(1,)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])
+
+        test_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])
+
+    else:
+        # Define transforms
+        from albumentations.pytorch import ToTensorV2
+        class AlbumentationsTransform:
+            
+            def __init__(self, transform):
+                self.transform = transform
+
+            def __call__(self, img):
+                # Convert PIL Image to numpy array
+                img = np.array(img)
+                # Apply Albumentations transform with named argument
+                transformed = self.transform(image=img, mask=img)
+                return transformed["image"]
+            
+        
+        train_transform = transforms.Compose([
+            transforms.RandomRotation((-7.0, 7.0), fill=(1,)),
+            AlbumentationsTransform(A.CoarseDropout(num_holes_range=(1, 3), hole_height_range=(4, 5), hole_width_range=(5, 5), p=1.0)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])
+    
+       
+        # transform = A.Compose([
+        #     A.Rotate(limit=(-7.0, 7.0), border_mode=0, p=1.0, value=1),
+        #     A.CoarseDropout(max_holes=1, hole_height_range=(8,8), hole_width_range=(5,5), p=1.0),
+        #     A.Normalize((0.1307,), (0.3081,)),
+        #     ToTensorV2(),
+        # ])
+        #train_transform = AlbumentationsTransform(transform)
+
+
+
+        test_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])
+
     
     # Load MNIST dataset
     train_dataset = datasets.MNIST('./data', train=True, download=True, transform=train_transform)
+
     test_dataset = datasets.MNIST('./data', train=False, transform=test_transform)
     
-    # Create data loaders
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+    #Create data loaders
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=1000, shuffle=False)
     
     # Initialize model, criterion, and optimizer
@@ -146,7 +216,7 @@ def main():
     
     # Train the model and get metrics
     train_losses, test_losses, train_accuracies, test_accuracies = train_model(
-        model, train_loader, test_loader, criterion, optimizer, epochs=20, device=device
+        model, train_loader, test_loader, criterion, optimizer, epochs=15, device=device
     )
     
     # Plot and save metrics

@@ -1,6 +1,6 @@
 import torch
 import pytest
-from src.model import MNISTClassifier
+from src.model_2 import MNISTClassifier
 
 def test_parameter_count():
     """Test that the model has less than 20k parameters"""

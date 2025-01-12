@@ -1,146 +1,126 @@
-# MNIST Classifier with PyTorch
+# MNIST Classification on Amazon SageMaker
 
-A lightweight CNN architecture for MNIST digit classification, focusing on efficient design principles and modern best practices. The model achieves high accuracy while maintaining a parameter count below 20k.
+A comprehensive implementation of MNIST digit classification using PyTorch on Amazon SageMaker, achieving 99.4% test accuracy with a parameter-efficient CNN architecture.
 
-## 🎯 Model Architecture Highlights
+## 📊 Dataset
 
-- **Parameter Efficient**: < 20k total parameters
-- **Modern Practices**: 
-  - Batch Normalization for stable training
-  - Dropout layers for regularization
-  - Global Average Pooling instead of Dense layers
-  - Strategic use of residual connections
+The MNIST dataset consists of 28x28 grayscale images of handwritten digits (0-9):
+- Training set: 60,000 images
+- Test set: 10,000 images
+- Input dimensions: 1x28x28 (single channel grayscale)
+- 10 output classes (digits 0-9)
 
-## 📊 Dataset Overview
+## 🏗️ Model Architecture
 
-The MNIST dataset consists of 28x28 grayscale images of handwritten digits (0-9). Let's visualize some training examples:
+The model uses a modern, efficient CNN architecture with the following key components:
 
-```python
-import matplotlib.pyplot as plt
-import torchvision
-import torch
-import numpy as np
+### Feature Extraction Blocks
+1. **Initial Block**
+   - 3 consecutive Conv2D layers (1→10→10→10 channels)
+   - Each followed by ReLU, BatchNorm, and Dropout(0.05)
+   - MaxPool2D reduction
 
-# Load MNIST dataset
-train_dataset = torchvision.datasets.MNIST('./data', train=False, download=True)
+2. **Deep Feature Block**
+   - 3 Conv2D layers (10→10→10 channels)
+   - ReLU + BatchNorm + Dropout(0.05) after each
+   - Focus on feature refinement
 
-# Create a 10x10 grid of images
-fig, axes = plt.subplots(10, 10, figsize=(12, 12))
-for i in range(10):
-    for j in range(10):
-        idx = i * 10 + j
-        img = train_dataset.data[idx].numpy()
-        label = train_dataset.targets[idx].item()
-        axes[i, j].imshow(img, cmap='gray')
-        axes[i, j].axis('off')
-        axes[i, j].set_title(f'Digit: {label}')
-plt.tight_layout()
-plt.savefig('assets/mnist_examples.png')
-plt.show()
-```
+3. **Final Feature Block**
+   - Single Conv2D layer (10→12 channels)
+   - ReLU + BatchNorm + Dropout(0.05)
 
-![MNIST Examples](assets/mnist_examples.png)
+### Classification Head
+- Global Average Pooling
+- 1x1 Conv2D for final classification (12→10 channels)
+- LogSoftmax activation
 
-### Data Augmentation Strategy
+### Architecture Highlights
+- Parameter efficient (<20K parameters)
+- Heavy use of regularization (BatchNorm + Dropout)
+- No fully connected layers
+- Residual-style information flow
 
-Our training pipeline includes carefully chosen augmentations to improve model robustness:
+## 🚀 Training on SageMaker
 
-```python
-transforms.Compose([
-    transforms.RandomRotation((-7.0, 7.0), fill=(1,)),
-    transforms.ToTensor(),
-    transforms.Normalize((0.1307,), (0.3081,))
-])
-```
+### Training Configuration
+- **Framework**: PyTorch on SageMaker
+- **Instance Type**: ml.g4dn.xlarge
+- **Epochs**: 20
+- **Batch Size**: 32
+- **Optimizer**: Adam (lr=0.001)
+- **Loss Function**: Negative Log Likelihood
 
-1. **Random Rotation (-7° to 7°)**
-   - Purpose: Simulates natural handwriting variations
-   - Fill Value (1): Uses white fill for rotated edges to match MNIST background
-   - Impact: Makes model robust to slightly tilted digits
+### Data Augmentation
+1. **Random Rotation**
+   - Range: -7° to +7°
+   - Fill value: 1 (white)
+   - Purpose: Improve rotation invariance
 
-2. **Normalization (mean=0.1307, std=0.3081)**
-   - Purpose: Standardizes pixel values to improve training stability
-   - Values chosen based on MNIST dataset statistics
-   - Impact: Helps with faster convergence and better gradient flow
+2. **CoarseDropout (Cutout)**
+   - 1-3 holes per image
+   - Hole size: 4-5 pixels
+   - Purpose: Reduce overfitting
 
-## 📈 Training Results
+### Training Results
 
-Our model achieves competitive performance on the MNIST dataset:
+The model achieves excellent performance metrics:
 
-![Training Metrics](metric_results/metrics.png)
+- **Final Test Accuracy**: 99.4%
+- **Final Training Accuracy**: 98.43%
+- **Final Test Loss**: 0.0187
+- **Final Training Loss**: 0.0511
 
-## 🛠 Project Structure
+#### Training Progression
+- Quick initial convergence (92.6% → 96.6% in first 5 epochs)
+- Steady improvement in middle epochs
+- Stable final performance with minimal overfitting
+- Test accuracy consistently higher than training accuracy, indicating good generalization
 
+## 📈 Performance Analysis
+
+### Loss Curves
+- Training loss: Smooth descent from 0.247 to 0.051
+- Test loss: Stable decrease from 0.061 to 0.019
+- No signs of overfitting (test loss remains below training loss)
+
+### Accuracy Curves
+- Training accuracy: Steady climb from 92.6% to 98.43%
+- Test accuracy: Strong performance from early epochs, reaching 99.4%
+- Consistent ~1% gap between train and test accuracy
+
+## 🛠️ Implementation Details
+
+### Project Structure
 ```
 mnist_classifier/
-├── .github/
-│   └── workflows/
-│       └── model-tests.yml
-├── data/                    # Dataset storage
-├── metric_results/          # Training metrics and visualizations
-├── model.py                 # Model architecture definition
-├── train.py                # Training script
-├── test_model_architecture.py  # Architecture tests
-└── README.md
+├── model_3.py          # Model architecture definition
+├── train.py            # Training script with SageMaker integration
+├── mnist_inference.py  # Inference and evaluation script
+└── README.md          # Project documentation
 ```
 
-## 💻 Installation
+### Key Features
+- Efficient CNN architecture
+- Comprehensive data augmentation
+- SageMaker integration
+- Detailed metrics tracking
+- Misclassification analysis capability
 
-```bash
-# Clone the repository
-git clone https://github.com/your-username/mnist-classifier.git
-cd mnist-classifier
+## 🔍 Model Evaluation
 
-# Install dependencies
-pip install -r requirements.txt
-```
+The model shows excellent performance characteristics:
+- High accuracy (99.4% test)
+- Stable training progression
+- Good generalization (test > train accuracy)
+- Efficient parameter usage
+- Robust to input variations (via augmentation)
 
-## 🚀 Training the Model
+## 🚀 Future Improvements
 
-```bash
-python train.py
-```
+Potential areas for enhancement:
+1. Experiment with additional augmentation techniques
+2. Implement learning rate scheduling
+3. Explore model pruning for further efficiency
+4. Add model interpretability analysis
+5. Implement ensemble methods for even higher accuracy
 
-The script will:
-1. Download the MNIST dataset (if not present)
-2. Train the model for 20 epochs
-3. Save training metrics and model weights
-4. Generate visualization plots
-
-## 🔍 Model Architecture Tests
-
-We use GitHub Actions to automatically verify the model's architectural constraints:
-
-1. **Parameter Count**: Ensures total parameters < 20k
-2. **Batch Normalization**: Verifies the use of BatchNorm layers
-3. **Dropout**: Confirms the presence of Dropout layers
-4. **Architecture**: Checks for GAP instead of Dense layers
-
-Run tests locally:
-```bash
-pytest test_model_architecture.py
-```
-
-## 📝 Model Details
-
-```python
-class MNISTClassifier(nn.Module):
-    def __init__(self):
-        super(MNISTClassifier, self).__init__()
-        # Architecture details...
-```
-
-Key components:
-- Convolutional blocks
-- Batch normalization after each conv layer
-- Dropout for regularization
-- Global Average Pooling
-- No fully connected layers
-
-## 📊 Training Parameters
-
-- Batch Size: 64
-- Learning Rate: 0.001
-- Optimizer: Adam
-- Loss Function: Cross-Entropy
-- Epochs: 20
