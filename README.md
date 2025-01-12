@@ -50,6 +50,9 @@ The model uses a modern, efficient CNN architecture with the following key compo
 - **Optimizer**: Adam (lr=0.001)
 - **Loss Function**: Negative Log Likelihood
 
+![image](https://github.com/user-attachments/assets/8eb8870d-6381-4e6b-bbf0-603d620d9af7)
+
+
 ### Data Augmentation
 1. **Random Rotation**
    - Range: -7° to +7°
@@ -75,6 +78,8 @@ The model achieves excellent performance metrics:
 - Steady improvement in middle epochs
 - Stable final performance with minimal overfitting
 - Test accuracy consistently higher than training accuracy, indicating good generalization
+
+![7th assignment](https://github.com/user-attachments/assets/9b08bd87-78f1-47e1-bb18-e6979476bec5)
 
 ## 📈 Performance Analysis
 
